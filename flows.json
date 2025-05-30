@@ -1,0 +1,231 @@
+[
+    {
+        "id": "889206d18a109bdd",
+        "type": "tab",
+        "label": "Flow 6",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "801dd5458af3400e",
+        "type": "mqtt in",
+        "z": "889206d18a109bdd",
+        "name": "Alarme Status",
+        "topic": "remediot/alarme/status",
+        "qos": "2",
+        "datatype": "auto",
+        "broker": "mqtt_broker",
+        "nl": false,
+        "rap": false,
+        "inputs": 0,
+        "x": 70,
+        "y": 200,
+        "wires": [
+            [
+                "84e8a10fb5b7ecf7"
+            ]
+        ]
+    },
+    {
+        "id": "11cb5e5921805253",
+        "type": "mqtt in",
+        "z": "889206d18a109bdd",
+        "name": "Sensor Gaveta",
+        "topic": "remediot/sensor/status",
+        "qos": "2",
+        "datatype": "auto",
+        "broker": "mqtt_broker",
+        "nl": false,
+        "rap": false,
+        "inputs": 0,
+        "x": 80,
+        "y": 280,
+        "wires": [
+            [
+                "b10553ec90d81737",
+                "6b49b7224a926a6d"
+            ]
+        ]
+    },
+    {
+        "id": "84e8a10fb5b7ecf7",
+        "type": "function",
+        "z": "889206d18a109bdd",
+        "name": "Contador Alarme",
+        "func": "if (msg.payload === \"ON\") {\n    let count = flow.get('contadorAlarme') || 0;\n    count++;\n    flow.set('contadorAlarme', count);\n\n    msg.payload = {\n        measurement: \"alarme\",\n        fields: {\n            qtd_alarme: count\n        },\n        timestamp: new Date()\n    };\n\n    // Marca que alarme está ativo\n    flow.set('alarmActive', true);\n    return [msg, null];  // <- array para os 2 outputs\n} else if (msg.payload === \"OFF\") {\n    // Alarme desligado\n    flow.set('alarmActive', false);\n    // Para enviar mensagem WhatsApp, chamamos próximo nó\n    msg.payload = { payload: 'OFF' };\n    return [null, msg];\n} else {\n    return null;\n}\n",
+        "outputs": 2,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 330,
+        "y": 200,
+        "wires": [
+            [],
+            [
+                "afb10437f953cf24"
+            ]
+        ]
+    },
+    {
+        "id": "b10553ec90d81737",
+        "type": "function",
+        "z": "889206d18a109bdd",
+        "name": "Contador Gaveta",
+        "func": "if (msg.payload === \"ABERTO\") {\n    let count = flow.get('contadorGaveta') || 0;\n    count++;\n    flow.set('contadorGaveta', count);\n\n    flow.set('gavetaAberta', true);\n\n    msg.payload = {\n        measurement: \"gaveta\",\n        fields: {\n            value: count\n        },\n        timestamp: new Date()\n    };\n\n    return msg;\n\n} else if (msg.payload === \"FECHADO\") {\n    flow.set('gavetaAberta', false);\n    return null;\n\n} else {\n    const valor = parseFloat(msg.payload);\n    if (!isNaN(valor)) {\n        return {\n            payload: {\n                measurement: \"valor_generico\",\n                fields: {\n                    value: valor\n                },\n                timestamp: new Date()\n            }\n        };\n    }\n    return null;\n}\n",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 350,
+        "y": 280,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "1a12aa2909db9932",
+        "type": "function",
+        "z": "889206d18a109bdd",
+        "name": "Enviar WhatsApp",
+        "func": "// Pega o estado da gaveta do contexto de fluxo\nvar gavetaAberta = flow.get('gavetaAberta') || false;\n\nvar mensagem = '';\nvar hora = new Date();\nvar horaFormatada = ('0' + hora.getHours()).slice(-2) + ':' + ('0' + hora.getMinutes()).slice(-2);\n\nif (gavetaAberta) {\n    mensagem = `O remédio das ${horaFormatada} horas foi tomado!`;\n} else {\n    mensagem = `Informamos que o remédio das ${horaFormatada} horas não foi tomado!!!!!\\n\\n` +\n               `É muito importante que a medicação seja administrada pontualmente para garantir a eficácia do tratamento e o bem-estar do paciente.\\n` +\n               `Por favor, fique atento(a) a isso e, se possível, lembre-se de reforçar com ele a importância de não esquecer as próximas doses.`;\n}\n\n// Passa somente a mensagem como payload\nmsg.payload = mensagem;\n\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 730,
+        "y": 200,
+        "wires": [
+            [
+                "b875cd0173a5cc33",
+                "2fac456be69b9047"
+            ]
+        ]
+    },
+    {
+        "id": "6b49b7224a926a6d",
+        "type": "influxdb out",
+        "z": "889206d18a109bdd",
+        "influxdb": "dea4dcc7b99aeb90",
+        "name": "InfluxDB Gaveta",
+        "measurement": "RemedIoT",
+        "precision": "s",
+        "retentionPolicy": "",
+        "database": "",
+        "retentionPolicyV18Flux": "",
+        "org": "PaLu",
+        "bucket": "bucket",
+        "x": 240,
+        "y": 360,
+        "wires": []
+    },
+    {
+        "id": "b875cd0173a5cc33",
+        "type": "node-red-contrib-whatsapp-cmb-send-message",
+        "z": "889206d18a109bdd",
+        "name": "",
+        "credtype": "account",
+        "account": "5fe521df1d20c25b",
+        "text": "payload",
+        "phonenumbervalue": "",
+        "apikeyvalue": "",
+        "apikeyinputtypemessage": "msg",
+        "phonenumberinputtypemessage": "msg",
+        "inputtypemessage": "msg",
+        "rejectssl": false,
+        "x": 960,
+        "y": 200,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "2fac456be69b9047",
+        "type": "debug",
+        "z": "889206d18a109bdd",
+        "name": "debug 5",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 940,
+        "y": 280,
+        "wires": []
+    },
+    {
+        "id": "afb10437f953cf24",
+        "type": "delay",
+        "z": "889206d18a109bdd",
+        "name": "",
+        "pauseType": "delay",
+        "timeout": "3",
+        "timeoutUnits": "seconds",
+        "rate": "1",
+        "nbRateUnits": "1",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "allowrate": false,
+        "outputs": 1,
+        "x": 540,
+        "y": 220,
+        "wires": [
+            [
+                "1a12aa2909db9932"
+            ]
+        ]
+    },
+    {
+        "id": "mqtt_broker",
+        "type": "mqtt-broker",
+        "name": "Broker HiveMQ",
+        "broker": "broker.hivemq.com",
+        "port": "1883",
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": 4,
+        "keepalive": "60",
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthPayload": "",
+        "closeTopic": "",
+        "closePayload": "",
+        "willTopic": "",
+        "willQos": "0",
+        "willPayload": ""
+    },
+    {
+        "id": "dea4dcc7b99aeb90",
+        "type": "influxdb",
+        "hostname": "127.0.0.1",
+        "port": 8086,
+        "protocol": "http",
+        "database": "database",
+        "name": "PaLu",
+        "usetls": false,
+        "tls": "",
+        "influxdbVersion": "2.0",
+        "url": "https://us-east-1-1.aws.cloud2.influxdata.com/",
+        "timeout": 10,
+        "rejectUnauthorized": true
+    },
+    {
+        "id": "5fe521df1d20c25b",
+        "type": "node-red-contrib-whatsapp-cmb-account",
+        "name": "WhatsApp API Account"
+    }
+]
