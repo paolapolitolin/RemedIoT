@@ -23,6 +23,8 @@ O dispositivo RemedIoT é capaz de:
 - Visualizar essas informações em dashboards configurados no Grafana;
 - Acionar envio de **mensagens via WhatsApp** em caso de não adesão ao horário da medicação.
 
+Link do vídeo com a demonstração do protótipo : https://youtu.be/je98n69lnlg?si=rQWqF0e85aYZ7gcg
+
 ---
 
 ## 🧠 Tecnologias Utilizadas
